@@ -1,0 +1,134 @@
+{
+    "name": "PL_UPS_BillingTransactions_ETL",
+    "type": "Microsoft.DataFactory/factories/pipelines",
+    "properties": {
+        "description": "End-to-end ETL pipeline for UPS Finance Billing Transactions. Reads raw billing CSV, transforms and aggregates using data flow, and sinks the report to output CSV. Integration Runtime must be configured manually.",
+        "activities": [
+            {
+                "name": "ValidateSourceFileExists",
+                "description": "Check that the source billing_transactions.csv file exists before processing",
+                "type": "GetMetadata",
+                "dependsOn": [],
+                "policy": {
+                    "timeout": "0.00:05:00",
+                    "retry": 1,
+                    "retryIntervalInSeconds": 30
+                },
+                "typeProperties": {
+                    "dataset": {
+                        "referenceName": "DS_CSV_BillingTransactions_Source",
+                        "type": "DatasetReference"
+                    },
+                    "fieldList": [
+                        "exists",
+                        "size",
+                        "lastModified"
+                    ],
+                    "storeSettings": {
+                        "type": "AzureBlobStorageReadSettings",
+                        "recursive": false
+                    }
+                }
+            },
+            {
+                "name": "CheckFileExists",
+                "description": "Branch on whether the source file actually exists",
+                "type": "IfCondition",
+                "dependsOn": [
+                    {
+                        "activity": "ValidateSourceFileExists",
+                        "dependencyConditions": [ "Succeeded" ]
+                    }
+                ],
+                "typeProperties": {
+                    "expression": {
+                        "value": "@activity('ValidateSourceFileExists').output.exists",
+                        "type": "Expression"
+                    },
+                    "ifTrueActivities": [
+                        {
+                            "name": "RunBillingTransformDataFlow",
+                            "description": "Execute the billing transactions mapping data flow for transformation and aggregation",
+                            "type": "ExecuteDataFlow",
+                            "policy": {
+                                "timeout": "1.00:00:00",
+                                "retry": 1,
+                                "retryIntervalInSeconds": 60
+                            },
+                            "typeProperties": {
+                                "dataflow": {
+                                    "referenceName": "DF_BillingTransactions_Transform",
+                                    "type": "DataFlowReference"
+                                },
+                                "compute": {
+                                    "coreCount": 8,
+                                    "computeType": "General"
+                                },
+                                "traceLevel": "Fine"
+                            }
+                        }
+                    ],
+                    "ifFalseActivities": [
+                        {
+                            "name": "LogFileMissing",
+                            "description": "Fail the pipeline with a clear message if source file does not exist",
+                            "type": "Fail",
+                            "typeProperties": {
+                                "message": {
+                                    "value": "@concat('Source file billing_transactions.csv was not found in container ups-finance-source/billing/raw. Pipeline run ID: ', pipeline().RunId)",
+                                    "type": "Expression"
+                                },
+                                "errorCode": "SOURCE_FILE_NOT_FOUND"
+                            }
+                        }
+                    ]
+                }
+            },
+            {
+                "name": "LogPipelineSuccess",
+                "description": "Set a success variable with run metadata after successful data flow execution",
+                "type": "SetVariable",
+                "dependsOn": [
+                    {
+                        "activity": "CheckFileExists",
+                        "dependencyConditions": [ "Succeeded" ]
+                    }
+                ],
+                "typeProperties": {
+                    "variableName": "PipelineStatus",
+                    "value": {
+                        "value": "@concat('SUCCESS | RunId: ', pipeline().RunId, ' | Completed: ', utcNow())",
+                        "type": "Expression"
+                    }
+                }
+            }
+        ],
+        "variables": {
+            "PipelineStatus": {
+                "type": "String",
+                "defaultValue": "RUNNING"
+            }
+        },
+        "parameters": {
+            "BillingMonth": {
+                "type": "String",
+                "defaultValue": ""
+            },
+            "BillingYear": {
+                "type": "String",
+                "defaultValue": ""
+            }
+        },
+        "annotations": [
+            "UPS",
+            "Finance",
+            "Billing",
+            "ETL",
+            "CSV"
+        ],
+        "concurrency": 1,
+        "policy": {
+            "elapsedTimeMetric": {}
+        }
+    }
+}

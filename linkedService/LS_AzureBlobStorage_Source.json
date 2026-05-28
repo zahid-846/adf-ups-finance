@@ -1,0 +1,17 @@
+{
+    "name": "LS_AzureBlobStorage_Source",
+    "type": "Microsoft.DataFactory/factories/linkedservices",
+    "properties": {
+        "description": "Linked Service for source Azure Blob Storage containing UPS Finance & Billing CSV files",
+        "type": "AzureBlobStorage",
+        "typeProperties": {
+            "connectionString": "DefaultEndpointsProtocol=https;AccountName=upsfinancestorage;AccountKey=<your-storage-account-key>;EndpointSuffix=core.windows.net"
+        },
+        "annotations": [
+            "UPS",
+            "Finance",
+            "Source",
+            "Billing"
+        ]
+    }
+}

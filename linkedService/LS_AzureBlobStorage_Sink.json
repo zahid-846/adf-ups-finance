@@ -1,0 +1,17 @@
+{
+    "name": "LS_AzureBlobStorage_Sink",
+    "type": "Microsoft.DataFactory/factories/linkedservices",
+    "properties": {
+        "description": "Linked Service for sink Azure Blob Storage to store transformed UPS Finance & Billing CSV outputs",
+        "type": "AzureBlobStorage",
+        "typeProperties": {
+            "connectionString": "DefaultEndpointsProtocol=https;AccountName=upsfinancesinkstorage;AccountKey=<your-storage-account-key>;EndpointSuffix=core.windows.net"
+        },
+        "annotations": [
+            "UPS",
+            "Finance",
+            "Sink",
+            "Billing"
+        ]
+    }
+}

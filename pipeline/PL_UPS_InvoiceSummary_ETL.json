@@ -1,0 +1,130 @@
+{
+    "name": "PL_UPS_InvoiceSummary_ETL",
+    "type": "Microsoft.DataFactory/factories/pipelines",
+    "properties": {
+        "description": "End-to-end ETL pipeline for UPS Finance Invoice Summary. Reads raw invoice CSV, applies aging classification and aggregation via data flow, and sinks customer billing summary to output CSV.",
+        "activities": [
+            {
+                "name": "ValidateInvoiceFileExists",
+                "description": "Check that source invoice_summary.csv exists before processing",
+                "type": "GetMetadata",
+                "dependsOn": [],
+                "policy": {
+                    "timeout": "0.00:05:00",
+                    "retry": 1,
+                    "retryIntervalInSeconds": 30
+                },
+                "typeProperties": {
+                    "dataset": {
+                        "referenceName": "DS_CSV_InvoiceSummary_Source",
+                        "type": "DatasetReference"
+                    },
+                    "fieldList": [
+                        "exists",
+                        "size",
+                        "lastModified"
+                    ],
+                    "storeSettings": {
+                        "type": "AzureBlobStorageReadSettings",
+                        "recursive": false
+                    }
+                }
+            },
+            {
+                "name": "CheckInvoiceFileExists",
+                "description": "Branch on whether invoice file exists",
+                "type": "IfCondition",
+                "dependsOn": [
+                    {
+                        "activity": "ValidateInvoiceFileExists",
+                        "dependencyConditions": [ "Succeeded" ]
+                    }
+                ],
+                "typeProperties": {
+                    "expression": {
+                        "value": "@activity('ValidateInvoiceFileExists').output.exists",
+                        "type": "Expression"
+                    },
+                    "ifTrueActivities": [
+                        {
+                            "name": "RunInvoiceTransformDataFlow",
+                            "description": "Execute the invoice summary mapping data flow",
+                            "type": "ExecuteDataFlow",
+                            "policy": {
+                                "timeout": "1.00:00:00",
+                                "retry": 1,
+                                "retryIntervalInSeconds": 60
+                            },
+                            "typeProperties": {
+                                "dataflow": {
+                                    "referenceName": "DF_InvoiceSummary_Transform",
+                                    "type": "DataFlowReference"
+                                },
+                                "compute": {
+                                    "coreCount": 8,
+                                    "computeType": "General"
+                                },
+                                "traceLevel": "Fine"
+                            }
+                        }
+                    ],
+                    "ifFalseActivities": [
+                        {
+                            "name": "LogInvoiceFileMissing",
+                            "description": "Fail the pipeline if invoice source file not found",
+                            "type": "Fail",
+                            "typeProperties": {
+                                "message": {
+                                    "value": "@concat('Source file invoice_summary.csv was not found. Pipeline run ID: ', pipeline().RunId)",
+                                    "type": "Expression"
+                                },
+                                "errorCode": "INVOICE_FILE_NOT_FOUND"
+                            }
+                        }
+                    ]
+                }
+            },
+            {
+                "name": "SetSuccessStatus",
+                "description": "Record pipeline completion status",
+                "type": "SetVariable",
+                "dependsOn": [
+                    {
+                        "activity": "CheckInvoiceFileExists",
+                        "dependencyConditions": [ "Succeeded" ]
+                    }
+                ],
+                "typeProperties": {
+                    "variableName": "PipelineStatus",
+                    "value": {
+                        "value": "@concat('SUCCESS | RunId: ', pipeline().RunId, ' | Completed: ', utcNow())",
+                        "type": "Expression"
+                    }
+                }
+            }
+        ],
+        "variables": {
+            "PipelineStatus": {
+                "type": "String",
+                "defaultValue": "RUNNING"
+            }
+        },
+        "parameters": {
+            "ProcessingDate": {
+                "type": "String",
+                "defaultValue": ""
+            }
+        },
+        "annotations": [
+            "UPS",
+            "Finance",
+            "Invoice",
+            "ETL",
+            "CSV"
+        ],
+        "concurrency": 1,
+        "policy": {
+            "elapsedTimeMetric": {}
+        }
+    }
+}

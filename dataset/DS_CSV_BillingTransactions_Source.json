@@ -1,0 +1,48 @@
+{
+    "name": "DS_CSV_BillingTransactions_Source",
+    "type": "Microsoft.DataFactory/factories/datasets",
+    "properties": {
+        "description": "Source dataset for UPS Billing Transactions CSV file stored in Azure Blob Storage",
+        "linkedServiceName": {
+            "referenceName": "LS_AzureBlobStorage_Source",
+            "type": "LinkedServiceReference"
+        },
+        "type": "DelimitedText",
+        "typeProperties": {
+            "location": {
+                "type": "AzureBlobStorageLocation",
+                "fileName": "billing_transactions.csv",
+                "container": "ups-finance-source",
+                "folderPath": "billing/raw"
+            },
+            "columnDelimiter": ",",
+            "rowDelimiter": "\n",
+            "encodingName": "UTF-8",
+            "firstRowAsHeader": true,
+            "quoteChar": "\"",
+            "escapeChar": "\\"
+        },
+        "schema": [
+            { "name": "TransactionID",     "type": "String" },
+            { "name": "CustomerID",        "type": "String" },
+            { "name": "ShipmentID",        "type": "String" },
+            { "name": "BillingDate",       "type": "String" },
+            { "name": "ServiceType",       "type": "String" },
+            { "name": "WeightLbs",         "type": "String" },
+            { "name": "Zone",              "type": "String" },
+            { "name": "BaseCharge",        "type": "String" },
+            { "name": "FuelSurcharge",     "type": "String" },
+            { "name": "ResidentialFee",    "type": "String" },
+            { "name": "DeclaredValue",     "type": "String" },
+            { "name": "TotalCharge",       "type": "String" },
+            { "name": "Currency",          "type": "String" },
+            { "name": "PaymentStatus",     "type": "String" }
+        ],
+        "annotations": [
+            "UPS",
+            "Billing",
+            "Source",
+            "CSV"
+        ]
+    }
+}

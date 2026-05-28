@@ -1,0 +1,48 @@
+{
+    "name": "DS_CSV_CustomerAccounts_Source",
+    "type": "Microsoft.DataFactory/factories/datasets",
+    "properties": {
+        "description": "Source dataset for UPS Customer Accounts CSV file",
+        "linkedServiceName": {
+            "referenceName": "LS_AzureBlobStorage_Source",
+            "type": "LinkedServiceReference"
+        },
+        "type": "DelimitedText",
+        "typeProperties": {
+            "location": {
+                "type": "AzureBlobStorageLocation",
+                "fileName": "customer_accounts.csv",
+                "container": "ups-finance-source",
+                "folderPath": "customers/raw"
+            },
+            "columnDelimiter": ",",
+            "rowDelimiter": "\n",
+            "encodingName": "UTF-8",
+            "firstRowAsHeader": true,
+            "quoteChar": "\"",
+            "escapeChar": "\\"
+        },
+        "schema": [
+            { "name": "CustomerID",        "type": "String" },
+            { "name": "AccountNumber",     "type": "String" },
+            { "name": "CompanyName",       "type": "String" },
+            { "name": "ContactName",       "type": "String" },
+            { "name": "Email",             "type": "String" },
+            { "name": "Phone",             "type": "String" },
+            { "name": "BillingAddress",    "type": "String" },
+            { "name": "City",              "type": "String" },
+            { "name": "State",             "type": "String" },
+            { "name": "ZipCode",           "type": "String" },
+            { "name": "Country",           "type": "String" },
+            { "name": "AccountType",       "type": "String" },
+            { "name": "CreditLimit",       "type": "String" },
+            { "name": "AccountStatus",     "type": "String" }
+        ],
+        "annotations": [
+            "UPS",
+            "Customer",
+            "Source",
+            "CSV"
+        ]
+    }
+}

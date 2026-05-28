@@ -1,0 +1,65 @@
+{
+    "name": "DF_BillingTransactions_Transform",
+    "type": "Microsoft.DataFactory/factories/dataflows",
+    "properties": {
+        "description": "Data flow to transform, cleanse, and aggregate UPS billing transactions. Joins billing data with customer accounts, applies surcharge calculations, and aggregates totals by customer and service type.",
+        "type": "MappingDataFlow",
+        "typeProperties": {
+            "sources": [
+                {
+                    "name": "SourceBillingTransactions",
+                    "description": "Read raw billing transactions CSV",
+                    "dataset": {
+                        "referenceName": "DS_CSV_BillingTransactions_Source",
+                        "type": "DatasetReference"
+                    }
+                },
+                {
+                    "name": "SourceCustomerAccounts",
+                    "description": "Read customer accounts CSV for join",
+                    "dataset": {
+                        "referenceName": "DS_CSV_CustomerAccounts_Source",
+                        "type": "DatasetReference"
+                    }
+                }
+            ],
+            "sinks": [
+                {
+                    "name": "SinkBillingReport",
+                    "description": "Write aggregated billing report to output CSV",
+                    "dataset": {
+                        "referenceName": "DS_CSV_BillingReport_Sink",
+                        "type": "DatasetReference"
+                    }
+                }
+            ],
+            "transformations": [
+                {
+                    "name": "FilterValidTransactions",
+                    "description": "Remove records with null TransactionID or zero TotalCharge"
+                },
+                {
+                    "name": "CastDataTypes",
+                    "description": "Cast string columns to proper numeric and date types"
+                },
+                {
+                    "name": "DeriveCalculatedColumns",
+                    "description": "Derive effective tax rate, total surcharges, and net billing amount"
+                },
+                {
+                    "name": "JoinCustomerData",
+                    "description": "Left join billing transactions with customer accounts on CustomerID"
+                },
+                {
+                    "name": "AggregateByCustomerAndService",
+                    "description": "Aggregate totals grouped by CustomerID, CompanyName, and ServiceType"
+                },
+                {
+                    "name": "SortByTotalChargeDesc",
+                    "description": "Sort final output by TotalCharge descending"
+                }
+            ],
+            "script": "source(output(\n    TransactionID as string,\n    CustomerID as string,\n    ShipmentID as string,\n    BillingDate as string,\n    ServiceType as string,\n    WeightLbs as string,\n    Zone as string,\n    BaseCharge as string,\n    FuelSurcharge as string,\n    ResidentialFee as string,\n    DeclaredValue as string,\n    TotalCharge as string,\n    Currency as string,\n    PaymentStatus as string\n),\nallowSchemaDrift: true,\nvalidateSchema: false,\nignoreNoFilesFound: false) ~> SourceBillingTransactions\nsource(output(\n    CustomerID as string,\n    AccountNumber as string,\n    CompanyName as string,\n    ContactName as string,\n    Email as string,\n    Phone as string,\n    BillingAddress as string,\n    City as string,\n    State as string,\n    ZipCode as string,\n    Country as string,\n    AccountType as string,\n    CreditLimit as string,\n    AccountStatus as string\n),\nallowSchemaDrift: true,\nvalidateSchema: false,\nignoreNoFilesFound: false) ~> SourceCustomerAccounts\nSourceBillingTransactions filter(!isNull(TransactionID) && toDouble(TotalCharge) > 0) ~> FilterValidTransactions\nFilterValidTransactions derive(\n    BillingDate = toDate(BillingDate, 'yyyy-MM-dd'),\n    WeightLbs = toDouble(WeightLbs),\n    BaseCharge = toDouble(BaseCharge),\n    FuelSurcharge = toDouble(FuelSurcharge),\n    ResidentialFee = toDouble(ResidentialFee),\n    DeclaredValue = toDouble(DeclaredValue),\n    TotalCharge = toDouble(TotalCharge)\n) ~> CastDataTypes\nCastDataTypes derive(\n    TotalSurcharges = FuelSurcharge + ResidentialFee,\n    NetBillingAmount = TotalCharge - (FuelSurcharge + ResidentialFee),\n    ProcessedTimestamp = currentTimestamp(),\n    BillingMonth = month(BillingDate),\n    BillingYear = year(BillingDate)\n) ~> DeriveCalculatedColumns\nDeriveCalculatedColumns, SourceCustomerAccounts join(\n    DeriveCalculatedColumns@CustomerID == SourceCustomerAccounts@CustomerID,\n    joinType:'left',\n    matchCondition:'none',\n    broadcast: 'auto'\n)~> JoinCustomerData\nJoinCustomerData aggregate(\n    groupBy(\n        CustomerID = DeriveCalculatedColumns@CustomerID,\n        CompanyName,\n        AccountType,\n        ServiceType,\n        BillingMonth,\n        BillingYear,\n        Currency\n    ),\n    TotalTransactions = count(TransactionID),\n    TotalWeightLbs = sum(WeightLbs),\n    TotalBaseCharge = round(sum(BaseCharge), 2),\n    TotalFuelSurcharge = round(sum(FuelSurcharge), 2),\n    TotalResidentialFee = round(sum(ResidentialFee), 2),\n    TotalSurcharges = round(sum(TotalSurcharges), 2),\n    TotalNetBilling = round(sum(NetBillingAmount), 2),\n    GrandTotalCharge = round(sum(TotalCharge), 2),\n    AvgChargePerShipment = round(avg(TotalCharge), 2)\n) ~> AggregateByCustomerAndService\nAggregateByCustomerAndService sort(\n    desc(GrandTotalCharge, true)\n) ~> SortByTotalChargeDesc\nSortByTotalChargeDesc sink(\n    allowSchemaDrift: true,\n    validateSchema: false,\n    truncate: true,\n    skipDuplicateMapInputs: true,\n    skipDuplicateMapOutputs: true\n) ~> SinkBillingReport"
+        }
+    }
+}

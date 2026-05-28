@@ -1,0 +1,65 @@
+{
+    "name": "DF_InvoiceSummary_Transform",
+    "type": "Microsoft.DataFactory/factories/dataflows",
+    "properties": {
+        "description": "Data flow to process and enrich UPS invoice summary data. Joins invoices with customer accounts, classifies invoices by aging bucket, and outputs customer-level billing summaries.",
+        "type": "MappingDataFlow",
+        "typeProperties": {
+            "sources": [
+                {
+                    "name": "SourceInvoiceSummary",
+                    "description": "Read raw invoice summary CSV",
+                    "dataset": {
+                        "referenceName": "DS_CSV_InvoiceSummary_Source",
+                        "type": "DatasetReference"
+                    }
+                },
+                {
+                    "name": "SourceCustomerAccounts",
+                    "description": "Read customer accounts for join",
+                    "dataset": {
+                        "referenceName": "DS_CSV_CustomerAccounts_Source",
+                        "type": "DatasetReference"
+                    }
+                }
+            ],
+            "sinks": [
+                {
+                    "name": "SinkCustomerBillingSummary",
+                    "description": "Write customer billing summary output CSV",
+                    "dataset": {
+                        "referenceName": "DS_CSV_CustomerBillingSummary_Sink",
+                        "type": "DatasetReference"
+                    }
+                }
+            ],
+            "transformations": [
+                {
+                    "name": "FilterActiveInvoices",
+                    "description": "Keep only PENDING and OVERDUE invoices for processing"
+                },
+                {
+                    "name": "CastInvoiceTypes",
+                    "description": "Cast monetary and date columns to proper types"
+                },
+                {
+                    "name": "DeriveAgingAndFlags",
+                    "description": "Derive DaysOutstanding, AgingBucket, and IsOverdue flag"
+                },
+                {
+                    "name": "JoinCustomerInfo",
+                    "description": "Inner join invoices with customer accounts on CustomerID"
+                },
+                {
+                    "name": "AggregateCustomerSummary",
+                    "description": "Aggregate invoice totals per customer"
+                },
+                {
+                    "name": "SelectFinalColumns",
+                    "description": "Select and rename final output columns"
+                }
+            ],
+            "script": "source(output(\n    InvoiceID as string,\n    CustomerID as string,\n    InvoiceDate as string,\n    DueDate as string,\n    BillingPeriodStart as string,\n    BillingPeriodEnd as string,\n    TotalShipments as string,\n    TotalWeight as string,\n    SubTotal as string,\n    TaxAmount as string,\n    DiscountAmount as string,\n    InvoiceTotal as string,\n    Currency as string,\n    InvoiceStatus as string\n),\nallowSchemaDrift: true,\nvalidateSchema: false,\nignoreNoFilesFound: false) ~> SourceInvoiceSummary\nsource(output(\n    CustomerID as string,\n    AccountNumber as string,\n    CompanyName as string,\n    ContactName as string,\n    Email as string,\n    Phone as string,\n    BillingAddress as string,\n    City as string,\n    State as string,\n    ZipCode as string,\n    Country as string,\n    AccountType as string,\n    CreditLimit as string,\n    AccountStatus as string\n),\nallowSchemaDrift: true,\nvalidateSchema: false,\nignoreNoFilesFound: false) ~> SourceCustomerAccounts\nSourceInvoiceSummary filter(InvoiceStatus == 'PENDING' || InvoiceStatus == 'OVERDUE') ~> FilterActiveInvoices\nFilterActiveInvoices derive(\n    InvoiceDate = toDate(InvoiceDate, 'yyyy-MM-dd'),\n    DueDate = toDate(DueDate, 'yyyy-MM-dd'),\n    BillingPeriodStart = toDate(BillingPeriodStart, 'yyyy-MM-dd'),\n    BillingPeriodEnd = toDate(BillingPeriodEnd, 'yyyy-MM-dd'),\n    TotalShipments = toInteger(TotalShipments),\n    TotalWeight = toDouble(TotalWeight),\n    SubTotal = toDouble(SubTotal),\n    TaxAmount = toDouble(TaxAmount),\n    DiscountAmount = toDouble(DiscountAmount),\n    InvoiceTotal = toDouble(InvoiceTotal),\n    CreditLimit = toDouble(CreditLimit)\n) ~> CastInvoiceTypes\nCastInvoiceTypes derive(\n    DaysOutstanding = daysBetween(DueDate, currentDate()),\n    AgingBucket = iif(DaysOutstanding <= 0, 'Current',\n                  iif(DaysOutstanding <= 30, '1-30 Days',\n                  iif(DaysOutstanding <= 60, '31-60 Days',\n                  iif(DaysOutstanding <= 90, '61-90 Days', '90+ Days')))),\n    IsOverdue = DaysOutstanding > 0,\n    EffectiveInvoiceAmount = InvoiceTotal - DiscountAmount\n) ~> DeriveAgingAndFlags\nDeriveAgingAndFlags, SourceCustomerAccounts join(\n    DeriveAgingAndFlags@CustomerID == SourceCustomerAccounts@CustomerID,\n    joinType:'inner',\n    matchCondition:'none',\n    broadcast: 'auto'\n)~> JoinCustomerInfo\nJoinCustomerInfo aggregate(\n    groupBy(\n        CustomerID = DeriveAgingAndFlags@CustomerID,\n        CompanyName,\n        AccountNumber,\n        ContactName,\n        Email,\n        City,\n        State,\n        Country,\n        AccountType,\n        AccountStatus,\n        Currency\n    ),\n    TotalInvoices = count(InvoiceID),\n    TotalShipments = sum(TotalShipments),\n    TotalSubAmount = round(sum(SubTotal), 2),\n    TotalTaxAmount = round(sum(TaxAmount), 2),\n    TotalDiscounts = round(sum(DiscountAmount), 2),\n    TotalAmountDue = round(sum(EffectiveInvoiceAmount), 2),\n    OldestDaysOutstanding = max(DaysOutstanding),\n    OverdueInvoiceCount = countIf(IsOverdue),\n    CurrentBucket = countIf(AgingBucket == 'Current'),\n    Bucket_1_30 = countIf(AgingBucket == '1-30 Days'),\n    Bucket_31_60 = countIf(AgingBucket == '31-60 Days'),\n    Bucket_61_90 = countIf(AgingBucket == '61-90 Days'),\n    Bucket_90Plus = countIf(AgingBucket == '90+ Days')\n) ~> AggregateCustomerSummary\nAggregateCustomerSummary select(\n    mapColumn(\n        CustomerID,\n        AccountNumber,\n        CompanyName,\n        ContactName,\n        Email,\n        City,\n        State,\n        Country,\n        AccountType,\n        AccountStatus,\n        Currency,\n        TotalInvoices,\n        TotalShipments,\n        TotalSubAmount,\n        TotalTaxAmount,\n        TotalDiscounts,\n        TotalAmountDue,\n        OldestDaysOutstanding,\n        OverdueInvoiceCount,\n        CurrentBucket,\n        Bucket_1_30,\n        Bucket_31_60,\n        Bucket_61_90,\n        Bucket_90Plus\n    ),\n    skipDuplicateMapInputs: true,\n    skipDuplicateMapOutputs: true\n) ~> SelectFinalColumns\nSelectFinalColumns sink(\n    allowSchemaDrift: true,\n    validateSchema: false,\n    truncate: true,\n    skipDuplicateMapInputs: true,\n    skipDuplicateMapOutputs: true\n) ~> SinkCustomerBillingSummary"
+        }
+    }
+}

@@ -1,0 +1,134 @@
+{
+    "name": "PL_UPS_Finance_Master",
+    "type": "Microsoft.DataFactory/factories/pipelines",
+    "properties": {
+        "description": "Master orchestration pipeline for UPS Finance & Billing. Executes both the Billing Transactions ETL and Invoice Summary ETL pipelines in parallel, then logs overall completion status.",
+        "activities": [
+            {
+                "name": "RunBillingETL",
+                "description": "Invoke the Billing Transactions ETL child pipeline",
+                "type": "ExecutePipeline",
+                "dependsOn": [],
+                "policy": {
+                    "secureInput": false
+                },
+                "typeProperties": {
+                    "pipeline": {
+                        "referenceName": "PL_UPS_BillingTransactions_ETL",
+                        "type": "PipelineReference"
+                    },
+                    "waitOnCompletion": true,
+                    "parameters": {
+                        "BillingMonth": {
+                            "value": "@pipeline().parameters.BillingMonth",
+                            "type": "Expression"
+                        },
+                        "BillingYear": {
+                            "value": "@pipeline().parameters.BillingYear",
+                            "type": "Expression"
+                        }
+                    }
+                }
+            },
+            {
+                "name": "RunInvoiceETL",
+                "description": "Invoke the Invoice Summary ETL child pipeline (runs in parallel with Billing ETL)",
+                "type": "ExecutePipeline",
+                "dependsOn": [],
+                "policy": {
+                    "secureInput": false
+                },
+                "typeProperties": {
+                    "pipeline": {
+                        "referenceName": "PL_UPS_InvoiceSummary_ETL",
+                        "type": "PipelineReference"
+                    },
+                    "waitOnCompletion": true,
+                    "parameters": {
+                        "ProcessingDate": {
+                            "value": "@pipeline().parameters.ProcessingDate",
+                            "type": "Expression"
+                        }
+                    }
+                }
+            },
+            {
+                "name": "CheckBothPipelinesSucceeded",
+                "description": "Evaluate success of both child pipelines",
+                "type": "IfCondition",
+                "dependsOn": [
+                    {
+                        "activity": "RunBillingETL",
+                        "dependencyConditions": [ "Completed" ]
+                    },
+                    {
+                        "activity": "RunInvoiceETL",
+                        "dependencyConditions": [ "Completed" ]
+                    }
+                ],
+                "typeProperties": {
+                    "expression": {
+                        "value": "@and(equals(activity('RunBillingETL').Status, 'Succeeded'), equals(activity('RunInvoiceETL').Status, 'Succeeded'))",
+                        "type": "Expression"
+                    },
+                    "ifTrueActivities": [
+                        {
+                            "name": "SetMasterSuccess",
+                            "type": "SetVariable",
+                            "typeProperties": {
+                                "variableName": "MasterStatus",
+                                "value": {
+                                    "value": "@concat('ALL_SUCCESS | Master RunId: ', pipeline().RunId, ' | Completed: ', utcNow())",
+                                    "type": "Expression"
+                                }
+                            }
+                        }
+                    ],
+                    "ifFalseActivities": [
+                        {
+                            "name": "SetMasterPartialFailure",
+                            "type": "SetVariable",
+                            "typeProperties": {
+                                "variableName": "MasterStatus",
+                                "value": {
+                                    "value": "@concat('PARTIAL_FAILURE | BillingETL: ', activity('RunBillingETL').Status, ' | InvoiceETL: ', activity('RunInvoiceETL').Status, ' | RunId: ', pipeline().RunId)",
+                                    "type": "Expression"
+                                }
+                            }
+                        }
+                    ]
+                }
+            }
+        ],
+        "variables": {
+            "MasterStatus": {
+                "type": "String",
+                "defaultValue": "RUNNING"
+            }
+        },
+        "parameters": {
+            "BillingMonth": {
+                "type": "String",
+                "defaultValue": ""
+            },
+            "BillingYear": {
+                "type": "String",
+                "defaultValue": ""
+            },
+            "ProcessingDate": {
+                "type": "String",
+                "defaultValue": ""
+            }
+        },
+        "annotations": [
+            "UPS",
+            "Finance",
+            "Master",
+            "Orchestration"
+        ],
+        "concurrency": 1,
+        "policy": {
+            "elapsedTimeMetric": {}
+        }
+    }
+}
