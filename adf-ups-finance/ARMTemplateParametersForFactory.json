@@ -1,0 +1,24 @@
+{
+	"$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentParameters.json#",
+	"contentVersion": "1.0.0.0",
+	"parameters": {
+		"factoryName": {
+			"value": "adf-ups-finance"
+		},
+		"LS_AzureBlobStorage_Sink_connectionString": {
+			"value": ""
+		},
+		"LS_AzureBlobStorage_Source_connectionString": {
+			"value": ""
+		},
+		"TR_UPS_Finance_Daily_Schedule_properties_PL_UPS_Finance_Master_parameters_BillingMonth": {
+			"value": "@formatDateTime(addDays(trigger().scheduledTime, -1), 'MM')"
+		},
+		"TR_UPS_Finance_Daily_Schedule_properties_PL_UPS_Finance_Master_parameters_BillingYear": {
+			"value": "@formatDateTime(addDays(trigger().scheduledTime, -1), 'yyyy')"
+		},
+		"TR_UPS_Finance_Daily_Schedule_properties_PL_UPS_Finance_Master_parameters_ProcessingDate": {
+			"value": "@formatDateTime(addDays(trigger().scheduledTime, -1), 'yyyy-MM-dd')"
+		}
+	}
+}

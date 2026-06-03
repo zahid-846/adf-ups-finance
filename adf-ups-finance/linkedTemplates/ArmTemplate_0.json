@@ -1,0 +1,1110 @@
+{
+	"$schema": "http://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+	"contentVersion": "1.0.0.0",
+	"parameters": {
+		"factoryName": {
+			"type": "string",
+			"metadata": "Data Factory name",
+			"defaultValue": "adf-ups-finance"
+		},
+		"LS_AzureBlobStorage_Sink_connectionString": {
+			"type": "secureString",
+			"metadata": "Secure string for 'connectionString' of 'LS_AzureBlobStorage_Sink'"
+		},
+		"LS_AzureBlobStorage_Source_connectionString": {
+			"type": "secureString",
+			"metadata": "Secure string for 'connectionString' of 'LS_AzureBlobStorage_Source'"
+		},
+		"TR_UPS_Finance_Daily_Schedule_properties_PL_UPS_Finance_Master_parameters_BillingMonth": {
+			"type": "string",
+			"defaultValue": "@formatDateTime(addDays(trigger().scheduledTime, -1), 'MM')"
+		},
+		"TR_UPS_Finance_Daily_Schedule_properties_PL_UPS_Finance_Master_parameters_BillingYear": {
+			"type": "string",
+			"defaultValue": "@formatDateTime(addDays(trigger().scheduledTime, -1), 'yyyy')"
+		},
+		"TR_UPS_Finance_Daily_Schedule_properties_PL_UPS_Finance_Master_parameters_ProcessingDate": {
+			"type": "string",
+			"defaultValue": "@formatDateTime(addDays(trigger().scheduledTime, -1), 'yyyy-MM-dd')"
+		}
+	},
+	"variables": {
+		"factoryId": "[concat('Microsoft.DataFactory/factories/', parameters('factoryName'))]"
+	},
+	"resources": [
+		{
+			"name": "[concat(parameters('factoryName'), '/LS_AzureBlobStorage_Sink')]",
+			"type": "Microsoft.DataFactory/factories/linkedServices",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"description": "Linked Service for sink Azure Blob Storage to store transformed UPS Finance & Billing CSV outputs",
+				"annotations": [
+					"UPS",
+					"Finance",
+					"Sink",
+					"Billing"
+				],
+				"type": "AzureBlobStorage",
+				"typeProperties": {
+					"connectionString": "[parameters('LS_AzureBlobStorage_Sink_connectionString')]"
+				}
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/LS_AzureBlobStorage_Source')]",
+			"type": "Microsoft.DataFactory/factories/linkedServices",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"description": "Linked Service for source Azure Blob Storage containing UPS Finance & Billing CSV files",
+				"annotations": [
+					"UPS",
+					"Finance",
+					"Source",
+					"Billing"
+				],
+				"type": "AzureBlobStorage",
+				"typeProperties": {
+					"connectionString": "[parameters('LS_AzureBlobStorage_Source_connectionString')]"
+				}
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/DS_CSV_BillingReport_Sink')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"description": "Sink dataset for transformed and aggregated UPS Billing Report output CSV",
+				"linkedServiceName": {
+					"referenceName": "LS_AzureBlobStorage_Sink",
+					"type": "LinkedServiceReference"
+				},
+				"annotations": [
+					"UPS",
+					"Billing",
+					"Sink",
+					"CSV",
+					"Aggregated"
+				],
+				"type": "DelimitedText",
+				"typeProperties": {
+					"location": {
+						"type": "AzureBlobStorageLocation",
+						"fileName": {
+							"value": "@concat('billing_report_', formatDateTime(utcNow(), 'yyyyMMdd'), '.csv')",
+							"type": "Expression"
+						},
+						"folderPath": "billing/aggregated",
+						"container": "ups-finance-output"
+					},
+					"columnDelimiter": ",",
+					"rowDelimiter": "\n",
+					"encodingName": "UTF-8",
+					"escapeChar": "\\",
+					"firstRowAsHeader": true,
+					"quoteChar": "\""
+				},
+				"schema": []
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/LS_AzureBlobStorage_Sink')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/DS_CSV_BillingTransactions_Source')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"description": "Source dataset for UPS Billing Transactions CSV file stored in Azure Blob Storage",
+				"linkedServiceName": {
+					"referenceName": "LS_AzureBlobStorage_Source",
+					"type": "LinkedServiceReference"
+				},
+				"annotations": [
+					"UPS",
+					"Billing",
+					"Source",
+					"CSV"
+				],
+				"type": "DelimitedText",
+				"typeProperties": {
+					"location": {
+						"type": "AzureBlobStorageLocation",
+						"fileName": "billing_transactions.csv",
+						"folderPath": "billing/raw",
+						"container": "ups-finance-source"
+					},
+					"columnDelimiter": ",",
+					"rowDelimiter": "\n",
+					"encodingName": "UTF-8",
+					"escapeChar": "\\",
+					"firstRowAsHeader": true,
+					"quoteChar": "\""
+				},
+				"schema": [
+					{
+						"name": "TransactionID",
+						"type": "String"
+					},
+					{
+						"name": "CustomerID",
+						"type": "String"
+					},
+					{
+						"name": "ShipmentID",
+						"type": "String"
+					},
+					{
+						"name": "BillingDate",
+						"type": "String"
+					},
+					{
+						"name": "ServiceType",
+						"type": "String"
+					},
+					{
+						"name": "WeightLbs",
+						"type": "String"
+					},
+					{
+						"name": "Zone",
+						"type": "String"
+					},
+					{
+						"name": "BaseCharge",
+						"type": "String"
+					},
+					{
+						"name": "FuelSurcharge",
+						"type": "String"
+					},
+					{
+						"name": "ResidentialFee",
+						"type": "String"
+					},
+					{
+						"name": "DeclaredValue",
+						"type": "String"
+					},
+					{
+						"name": "TotalCharge",
+						"type": "String"
+					},
+					{
+						"name": "Currency",
+						"type": "String"
+					},
+					{
+						"name": "PaymentStatus",
+						"type": "String"
+					}
+				]
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/LS_AzureBlobStorage_Source')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/DS_CSV_CustomerAccounts_Source')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"description": "Source dataset for UPS Customer Accounts CSV file",
+				"linkedServiceName": {
+					"referenceName": "LS_AzureBlobStorage_Source",
+					"type": "LinkedServiceReference"
+				},
+				"annotations": [
+					"UPS",
+					"Customer",
+					"Source",
+					"CSV"
+				],
+				"type": "DelimitedText",
+				"typeProperties": {
+					"location": {
+						"type": "AzureBlobStorageLocation",
+						"fileName": "customer_accounts.csv",
+						"folderPath": "customers/raw",
+						"container": "ups-finance-source"
+					},
+					"columnDelimiter": ",",
+					"rowDelimiter": "\n",
+					"encodingName": "UTF-8",
+					"escapeChar": "\\",
+					"firstRowAsHeader": true,
+					"quoteChar": "\""
+				},
+				"schema": [
+					{
+						"name": "CustomerID",
+						"type": "String"
+					},
+					{
+						"name": "AccountNumber",
+						"type": "String"
+					},
+					{
+						"name": "CompanyName",
+						"type": "String"
+					},
+					{
+						"name": "ContactName",
+						"type": "String"
+					},
+					{
+						"name": "Email",
+						"type": "String"
+					},
+					{
+						"name": "Phone",
+						"type": "String"
+					},
+					{
+						"name": "BillingAddress",
+						"type": "String"
+					},
+					{
+						"name": "City",
+						"type": "String"
+					},
+					{
+						"name": "State",
+						"type": "String"
+					},
+					{
+						"name": "ZipCode",
+						"type": "String"
+					},
+					{
+						"name": "Country",
+						"type": "String"
+					},
+					{
+						"name": "AccountType",
+						"type": "String"
+					},
+					{
+						"name": "CreditLimit",
+						"type": "String"
+					},
+					{
+						"name": "AccountStatus",
+						"type": "String"
+					}
+				]
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/LS_AzureBlobStorage_Source')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/DS_CSV_CustomerBillingSummary_Sink')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"description": "Sink dataset for per-customer aggregated billing summary output CSV",
+				"linkedServiceName": {
+					"referenceName": "LS_AzureBlobStorage_Sink",
+					"type": "LinkedServiceReference"
+				},
+				"annotations": [
+					"UPS",
+					"Customer",
+					"Sink",
+					"CSV",
+					"Summary"
+				],
+				"type": "DelimitedText",
+				"typeProperties": {
+					"location": {
+						"type": "AzureBlobStorageLocation",
+						"fileName": {
+							"value": "@concat('customer_billing_summary_', formatDateTime(utcNow(), 'yyyyMMdd'), '.csv')",
+							"type": "Expression"
+						},
+						"folderPath": "customers/summary",
+						"container": "ups-finance-output"
+					},
+					"columnDelimiter": ",",
+					"rowDelimiter": "\n",
+					"encodingName": "UTF-8",
+					"escapeChar": "\\",
+					"firstRowAsHeader": true,
+					"quoteChar": "\""
+				},
+				"schema": []
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/LS_AzureBlobStorage_Sink')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/DS_CSV_InvoiceSummary_Source')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"description": "Source dataset for UPS Invoice Summary CSV file",
+				"linkedServiceName": {
+					"referenceName": "LS_AzureBlobStorage_Source",
+					"type": "LinkedServiceReference"
+				},
+				"annotations": [
+					"UPS",
+					"Invoice",
+					"Source",
+					"CSV"
+				],
+				"type": "DelimitedText",
+				"typeProperties": {
+					"location": {
+						"type": "AzureBlobStorageLocation",
+						"fileName": "invoice_summary.csv",
+						"folderPath": "invoices/raw",
+						"container": "ups-finance-source"
+					},
+					"columnDelimiter": ",",
+					"encodingName": "UTF-8",
+					"escapeChar": "\\",
+					"firstRowAsHeader": true,
+					"quoteChar": "\""
+				},
+				"schema": [
+					{
+						"name": "InvoiceID",
+						"type": "String"
+					},
+					{
+						"name": "CustomerID",
+						"type": "String"
+					},
+					{
+						"name": "InvoiceDate",
+						"type": "String"
+					},
+					{
+						"name": "DueDate",
+						"type": "String"
+					},
+					{
+						"name": "BillingPeriodStart",
+						"type": "String"
+					},
+					{
+						"name": "BillingPeriodEnd",
+						"type": "String"
+					},
+					{
+						"name": "TotalShipments",
+						"type": "String"
+					},
+					{
+						"name": "TotalWeight",
+						"type": "String"
+					},
+					{
+						"name": "SubTotal",
+						"type": "String"
+					},
+					{
+						"name": "TaxAmount",
+						"type": "String"
+					},
+					{
+						"name": "DiscountAmount",
+						"type": "String"
+					},
+					{
+						"name": "InvoiceTotal",
+						"type": "String"
+					},
+					{
+						"name": "Currency",
+						"type": "String"
+					},
+					{
+						"name": "InvoiceStatus",
+						"type": "String"
+					}
+				]
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/LS_AzureBlobStorage_Source')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/DF_BillingTransactions_Transform')]",
+			"type": "Microsoft.DataFactory/factories/dataflows",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"description": "Data flow to transform, cleanse, and aggregate UPS billing transactions. Joins billing data with customer accounts, applies surcharge calculations, and aggregates totals by customer and service type.",
+				"type": "MappingDataFlow",
+				"typeProperties": {
+					"sources": [
+						{
+							"dataset": {
+								"referenceName": "DS_CSV_BillingTransactions_Source",
+								"type": "DatasetReference"
+							},
+							"name": "SourceBillingTransactions",
+							"description": "Read raw billing transactions CSV"
+						},
+						{
+							"dataset": {
+								"referenceName": "DS_CSV_CustomerAccounts_Source",
+								"type": "DatasetReference"
+							},
+							"name": "SourceCustomerAccounts",
+							"description": "Read customer accounts CSV for join"
+						}
+					],
+					"sinks": [
+						{
+							"dataset": {
+								"referenceName": "DS_CSV_BillingReport_Sink",
+								"type": "DatasetReference"
+							},
+							"name": "SinkBillingReport",
+							"description": "Write aggregated billing report to output CSV"
+						}
+					],
+					"transformations": [
+						{
+							"name": "FilterValidTransactions",
+							"description": "Remove records with null TransactionID or zero TotalCharge"
+						},
+						{
+							"name": "CastDataTypes",
+							"description": "Cast string columns to proper numeric and date types"
+						},
+						{
+							"name": "DeriveCalculatedColumns",
+							"description": "Derive effective tax rate, total surcharges, and net billing amount"
+						},
+						{
+							"name": "JoinCustomerData",
+							"description": "Left join billing transactions with customer accounts on CustomerID"
+						},
+						{
+							"name": "AggregateByCustomerAndService",
+							"description": "Aggregate totals grouped by CustomerID, CompanyName, and ServiceType"
+						},
+						{
+							"name": "SortByTotalChargeDesc",
+							"description": "Sort final output by TotalCharge descending"
+						}
+					],
+					"script": "source(output(\n\t\tTransactionID as string,\n\t\tCustomerID as string,\n\t\tShipmentID as string,\n\t\tBillingDate as string,\n\t\tServiceType as string,\n\t\tWeightLbs as string,\n\t\tZone as string,\n\t\tBaseCharge as string,\n\t\tFuelSurcharge as string,\n\t\tResidentialFee as string,\n\t\tDeclaredValue as string,\n\t\tTotalCharge as string,\n\t\tCurrency as string,\n\t\tPaymentStatus as string\n\t),\n\tallowSchemaDrift: true,\n\tvalidateSchema: false,\n\tignoreNoFilesFound: false) ~> SourceBillingTransactions\nsource(output(\n\t\tCustomerID as string,\n\t\tAccountNumber as string,\n\t\tCompanyName as string,\n\t\tContactName as string,\n\t\tEmail as string,\n\t\tPhone as string,\n\t\tBillingAddress as string,\n\t\tCity as string,\n\t\tState as string,\n\t\tZipCode as string,\n\t\tCountry as string,\n\t\tAccountType as string,\n\t\tCreditLimit as string,\n\t\tAccountStatus as string\n\t),\n\tallowSchemaDrift: true,\n\tvalidateSchema: false,\n\tignoreNoFilesFound: false) ~> SourceCustomerAccounts\nSourceBillingTransactions filter(!isNull(TransactionID) && toDouble(TotalCharge) > 0) ~> FilterValidTransactions\nFilterValidTransactions derive(BillingDate = toDate(BillingDate, 'yyyy-MM-dd'),\n\t\tWeightLbs = toDouble(WeightLbs),\n\t\tBaseCharge = toDouble(BaseCharge),\n\t\tFuelSurcharge = toDouble(FuelSurcharge),\n\t\tResidentialFee = toDouble(ResidentialFee),\n\t\tDeclaredValue = toDouble(DeclaredValue),\n\t\tTotalCharge = toDouble(TotalCharge)) ~> CastDataTypes\nCastDataTypes derive(TotalSurcharges = FuelSurcharge + ResidentialFee,\n\t\tNetBillingAmount = TotalCharge - (FuelSurcharge + ResidentialFee),\n\t\tProcessedTimestamp = currentTimestamp(),\n\t\tBillingMonth = month(BillingDate),\n\t\tBillingYear = year(BillingDate)) ~> DeriveCalculatedColumns\nDeriveCalculatedColumns, SourceCustomerAccounts join(SourceBillingTransactions@CustomerID == SourceCustomerAccounts@CustomerID,\n\tjoinType:'left',\n\tmatchType:'exact',\n\tignoreSpaces: false,\n\tbroadcast: 'auto',\n\tmatchCondition: 'none')~> JoinCustomerData\nJoinCustomerData aggregate(groupBy(SourceBillingTransactions@CustomerID,\n\t\tCompanyName,\n\t\tAccountType,\n\t\tServiceType,\n\t\tBillingMonth,\n\t\tBillingYear,\n\t\tCurrency),\n\tTotalTransactions = count(TransactionID),\n\t\tTotalWeightLbs = sum(WeightLbs),\n\t\tTotalBaseCharge = round(sum(BaseCharge), 2),\n\t\tTotalFuelSurcharge = round(sum(FuelSurcharge), 2),\n\t\tTotalResidentialFee = round(sum(ResidentialFee), 2),\n\t\tTotalSurcharges = round(sum(TotalSurcharges), 2),\n\t\tTotalNetBilling = round(sum(NetBillingAmount), 2),\n\t\tGrandTotalCharge = round(sum(TotalCharge), 2),\n\t\tAvgChargePerShipment = round(avg(TotalCharge), 2)) ~> AggregateByCustomerAndService\nAggregateByCustomerAndService sort(desc(GrandTotalCharge, true)) ~> SortByTotalChargeDesc\nSortByTotalChargeDesc sink(allowSchemaDrift: true,\n\tvalidateSchema: false,\n\ttruncate: true,\n\tskipDuplicateMapInputs: true,\n\tskipDuplicateMapOutputs: true) ~> SinkBillingReport"
+				}
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/datasets/DS_CSV_BillingTransactions_Source')]",
+				"[concat(variables('factoryId'), '/datasets/DS_CSV_CustomerAccounts_Source')]",
+				"[concat(variables('factoryId'), '/datasets/DS_CSV_BillingReport_Sink')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/DF_InvoiceSummary_Transform')]",
+			"type": "Microsoft.DataFactory/factories/dataflows",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"description": "Data flow to process and enrich UPS invoice summary data. Joins invoices with customer accounts, classifies invoices by aging bucket, and outputs customer-level billing summaries.",
+				"type": "MappingDataFlow",
+				"typeProperties": {
+					"sources": [
+						{
+							"dataset": {
+								"referenceName": "DS_CSV_InvoiceSummary_Source",
+								"type": "DatasetReference"
+							},
+							"name": "SourceInvoiceSummary",
+							"description": "Read raw invoice summary CSV"
+						},
+						{
+							"dataset": {
+								"referenceName": "DS_CSV_CustomerAccounts_Source",
+								"type": "DatasetReference"
+							},
+							"name": "SourceCustomerAccounts",
+							"description": "Read customer accounts for join"
+						}
+					],
+					"sinks": [
+						{
+							"dataset": {
+								"referenceName": "DS_CSV_CustomerBillingSummary_Sink",
+								"type": "DatasetReference"
+							},
+							"name": "SinkCustomerBillingSummary",
+							"description": "Write customer billing summary output CSV"
+						}
+					],
+					"transformations": [
+						{
+							"name": "FilterActiveInvoices"
+						},
+						{
+							"name": "CastInvoiceTypes",
+							"description": "Cast monetary and date columns to proper types"
+						},
+						{
+							"name": "DeriveAgingAndFlags",
+							"description": "Derive DaysOutstanding, AgingBucket, and IsOverdue flag"
+						},
+						{
+							"name": "JoinCustomerInfo",
+							"description": "Inner join invoices with customer accounts on CustomerID"
+						},
+						{
+							"name": "AggregateCustomerSummary",
+							"description": "Aggregate invoice totals per customer"
+						},
+						{
+							"name": "SelectFinalColumns",
+							"description": "Select and rename final output columns"
+						},
+						{
+							"name": "derivedColumn1"
+						}
+					],
+					"script": "source(output(\n\t\tInvoiceID as string,\n\t\tCustomerID as string,\n\t\tInvoiceDate as string,\n\t\tDueDate as string,\n\t\tBillingPeriodStart as string,\n\t\tBillingPeriodEnd as string,\n\t\tTotalShipments as string,\n\t\tTotalWeight as string,\n\t\tSubTotal as string,\n\t\tTaxAmount as string,\n\t\tDiscountAmount as string,\n\t\tInvoiceTotal as string,\n\t\tCurrency as string,\n\t\tInvoiceStatus as string\n\t),\n\tallowSchemaDrift: true,\n\tvalidateSchema: false,\n\tignoreNoFilesFound: false) ~> SourceInvoiceSummary\nsource(output(\n\t\tCustomerID as string,\n\t\tAccountNumber as string,\n\t\tCompanyName as string,\n\t\tContactName as string,\n\t\tEmail as string,\n\t\tPhone as string,\n\t\tBillingAddress as string,\n\t\tCity as string,\n\t\tState as string,\n\t\tZipCode as string,\n\t\tCountry as string,\n\t\tAccountType as string,\n\t\tCreditLimit as string,\n\t\tAccountStatus as string\n\t),\n\tallowSchemaDrift: true,\n\tvalidateSchema: false,\n\tignoreNoFilesFound: false) ~> SourceCustomerAccounts\nSourceInvoiceSummary filter(InvoiceStatus == 'PENDING' || InvoiceStatus == 'OVERDUE') ~> FilterActiveInvoices\nFilterActiveInvoices derive(InvoiceDate = toDate(InvoiceDate, 'yyyy-MM-dd'),\n\t\tDueDate = toDate(DueDate, 'yyyy-MM-dd'),\n\t\tBillingPeriodStart = toDate(BillingPeriodStart, 'yyyy-MM-dd'),\n\t\tBillingPeriodEnd = toDate(BillingPeriodEnd, 'yyyy-MM-dd'),\n\t\tTotalShipments = toInteger(TotalShipments),\n\t\tTotalWeight = toDouble(TotalWeight),\n\t\tSubTotal = toDouble(SubTotal),\n\t\tTaxAmount = toDouble(TaxAmount),\n\t\tDiscountAmount = toDouble(DiscountAmount),\n\t\tInvoiceTotal = toDouble(InvoiceTotal)) ~> CastInvoiceTypes\nCastInvoiceTypes derive(DaysOutstanding = toInteger(currentDate() - toDate(toString(DueDate), 'yyyy-MM-dd')),\n\t\tEffectiveInvoiceAmount = InvoiceTotal - DiscountAmount) ~> DeriveAgingAndFlags\nderivedColumn1, SourceCustomerAccounts join(SourceInvoiceSummary@CustomerID == SourceCustomerAccounts@CustomerID,\n\tjoinType:'inner',\n\tmatchType:'exact',\n\tignoreSpaces: false,\n\tbroadcast: 'auto',\n\tmatchCondition: 'none')~> JoinCustomerInfo\nJoinCustomerInfo aggregate(groupBy(SourceInvoiceSummary@CustomerID,\n\t\tCompanyName,\n\t\tAccountNumber,\n\t\tContactName,\n\t\tEmail,\n\t\tCity,\n\t\tState,\n\t\tCountry,\n\t\tAccountType,\n\t\tAccountStatus,\n\t\tCurrency),\n\tTotalInvoices = count(InvoiceID),\n\t\tTotalShipments = sum(TotalShipments),\n\t\tTotalSubAmount = round(sum(SubTotal), 2),\n\t\tTotalTaxAmount = round(sum(TaxAmount), 2),\n\t\tTotalDiscounts = round(sum(DiscountAmount), 2),\n\t\tOverdueInvoiceCount = countIf(IsOverdue),\n\t\tTotalAmountDue = round(sum(EffectiveInvoiceAmount), 2),\n\t\tOldestDaysOutstanding = max(DaysOutstanding),\n\t\tCurrentBucket = countIf(AgingBucket == 'Current'),\n\t\tBucket_1_30 = countIf(AgingBucket == '1-30 Days'),\n\t\tBucket_31_60 = countIf(AgingBucket == '31-60 Days'),\n\t\tBucket_61_90 = countIf(AgingBucket == '61-90 Days'),\n\t\tBucket_90Plus = countIf(AgingBucket == '90+ Days')) ~> AggregateCustomerSummary\nAggregateCustomerSummary select(mapColumn(\n\t\tCustomerID,\n\t\tAccountNumber,\n\t\tCompanyName,\n\t\tContactName,\n\t\tEmail,\n\t\tCity,\n\t\tState,\n\t\tCountry,\n\t\tAccountType,\n\t\tAccountStatus,\n\t\tCurrency,\n\t\tTotalInvoices,\n\t\tTotalShipments,\n\t\tTotalSubAmount,\n\t\tTotalTaxAmount,\n\t\tTotalDiscounts,\n\t\tTotalAmountDue,\n\t\tOldestDaysOutstanding,\n\t\tOverdueInvoiceCount,\n\t\tCurrentBucket,\n\t\tBucket_1_30,\n\t\tBucket_31_60,\n\t\tBucket_61_90,\n\t\tBucket_90Plus\n\t),\n\tskipDuplicateMapInputs: true,\n\tskipDuplicateMapOutputs: true) ~> SelectFinalColumns\nDeriveAgingAndFlags derive(AgingBucket = iif(DaysOutstanding <= 0, 'Current',                   iif(DaysOutstanding <= 30, '1-30 Days',                   iif(DaysOutstanding <= 60, '31-60 Days',                   iif(DaysOutstanding <= 90, '61-90 Days', '90+ Days')))),\n\t\tIsOverdue = DaysOutstanding > 0) ~> derivedColumn1\nSelectFinalColumns sink(allowSchemaDrift: true,\n\tvalidateSchema: false,\n\ttruncate: true,\n\tskipDuplicateMapInputs: true,\n\tskipDuplicateMapOutputs: true) ~> SinkCustomerBillingSummary"
+				}
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/datasets/DS_CSV_InvoiceSummary_Source')]",
+				"[concat(variables('factoryId'), '/datasets/DS_CSV_CustomerAccounts_Source')]",
+				"[concat(variables('factoryId'), '/datasets/DS_CSV_CustomerBillingSummary_Sink')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/PL_UPS_BillingTransactions_ETL')]",
+			"type": "Microsoft.DataFactory/factories/pipelines",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"description": "End-to-end ETL pipeline for UPS Finance Billing Transactions. Reads raw billing CSV, transforms and aggregates using data flow, and sinks the report to output CSV. Integration Runtime must be configured manually.",
+				"activities": [
+					{
+						"name": "ValidateSourceFileExists",
+						"description": "Check that the source billing_transactions.csv file exists before processing",
+						"type": "GetMetadata",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "0.00:05:00",
+							"retry": 1,
+							"retryIntervalInSeconds": 30
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"dataset": {
+								"referenceName": "DS_CSV_BillingTransactions_Source",
+								"type": "DatasetReference",
+								"parameters": {}
+							},
+							"fieldList": [
+								"exists",
+								"size",
+								"lastModified"
+							],
+							"storeSettings": {
+								"type": "AzureBlobStorageReadSettings",
+								"recursive": false
+							}
+						}
+					},
+					{
+						"name": "CheckFileExists",
+						"description": "Branch on whether the source file actually exists",
+						"type": "IfCondition",
+						"dependsOn": [
+							{
+								"activity": "ValidateSourceFileExists",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"userProperties": [],
+						"typeProperties": {
+							"expression": {
+								"value": "@activity('ValidateSourceFileExists').output.exists",
+								"type": "Expression"
+							},
+							"ifFalseActivities": [
+								{
+									"name": "LogFileMissing",
+									"description": "Fail the pipeline with a clear message if source file does not exist",
+									"type": "Fail",
+									"dependsOn": [],
+									"userProperties": [],
+									"typeProperties": {
+										"message": {
+											"value": "@concat('Source file billing_transactions.csv was not found in container ups-finance-source/billing/raw. Pipeline run ID: ', pipeline().RunId)",
+											"type": "Expression"
+										},
+										"errorCode": "SOURCE_FILE_NOT_FOUND"
+									}
+								}
+							],
+							"ifTrueActivities": [
+								{
+									"name": "RunBillingTransformDataFlow",
+									"description": "Execute the billing transactions mapping data flow for transformation and aggregation",
+									"type": "ExecuteDataFlow",
+									"dependsOn": [],
+									"policy": {
+										"timeout": "1.00:00:00",
+										"retry": 1,
+										"retryIntervalInSeconds": 60
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"dataflow": {
+											"referenceName": "DF_BillingTransactions_Transform",
+											"type": "DataFlowReference",
+											"parameters": {},
+											"datasetParameters": {
+												"SourceBillingTransactions": {},
+												"SourceCustomerAccounts": {},
+												"SinkBillingReport": {}
+											}
+										},
+										"staging": {},
+										"compute": {
+											"coreCount": 8,
+											"computeType": "General"
+										},
+										"traceLevel": "Fine"
+									}
+								}
+							]
+						}
+					},
+					{
+						"name": "LogPipelineSuccess",
+						"description": "Set a success variable with run metadata after successful data flow execution",
+						"type": "SetVariable",
+						"dependsOn": [
+							{
+								"activity": "CheckFileExists",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"variableName": "PipelineStatus",
+							"value": {
+								"value": "@concat('SUCCESS | RunId: ', pipeline().RunId, ' | Completed: ', utcNow())",
+								"type": "Expression"
+							}
+						}
+					}
+				],
+				"concurrency": 1,
+				"policy": {
+					"elapsedTimeMetric": {}
+				},
+				"parameters": {
+					"BillingMonth": {
+						"type": "String"
+					},
+					"BillingYear": {
+						"type": "String"
+					}
+				},
+				"variables": {
+					"PipelineStatus": {
+						"type": "String",
+						"defaultValue": "RUNNING"
+					}
+				},
+				"annotations": [
+					"UPS",
+					"Finance",
+					"Billing",
+					"ETL",
+					"CSV"
+				]
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/datasets/DS_CSV_BillingTransactions_Source')]",
+				"[concat(variables('factoryId'), '/dataflows/DF_BillingTransactions_Transform')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/PL_UPS_InvoiceSummary_ETL')]",
+			"type": "Microsoft.DataFactory/factories/pipelines",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"description": "End-to-end ETL pipeline for UPS Finance Invoice Summary. Reads raw invoice CSV, applies aging classification and aggregation via data flow, and sinks customer billing summary to output CSV.",
+				"activities": [
+					{
+						"name": "ValidateInvoiceFileExists",
+						"description": "Check that source invoice_summary.csv exists before processing",
+						"type": "GetMetadata",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "0.00:05:00",
+							"retry": 1,
+							"retryIntervalInSeconds": 30
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"dataset": {
+								"referenceName": "DS_CSV_InvoiceSummary_Source",
+								"type": "DatasetReference",
+								"parameters": {}
+							},
+							"fieldList": [
+								"exists",
+								"size",
+								"lastModified"
+							],
+							"storeSettings": {
+								"type": "AzureBlobStorageReadSettings",
+								"recursive": false
+							}
+						}
+					},
+					{
+						"name": "CheckInvoiceFileExists",
+						"description": "Branch on whether invoice file exists",
+						"type": "IfCondition",
+						"dependsOn": [
+							{
+								"activity": "ValidateInvoiceFileExists",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"userProperties": [],
+						"typeProperties": {
+							"expression": {
+								"value": "@activity('ValidateInvoiceFileExists').output.exists",
+								"type": "Expression"
+							},
+							"ifFalseActivities": [
+								{
+									"name": "LogInvoiceFileMissing",
+									"description": "Fail the pipeline if invoice source file not found",
+									"type": "Fail",
+									"dependsOn": [],
+									"userProperties": [],
+									"typeProperties": {
+										"message": {
+											"value": "@concat('Source file invoice_summary.csv was not found. Pipeline run ID: ', pipeline().RunId)",
+											"type": "Expression"
+										},
+										"errorCode": "INVOICE_FILE_NOT_FOUND"
+									}
+								}
+							],
+							"ifTrueActivities": [
+								{
+									"name": "RunInvoiceTransformDataFlow",
+									"description": "Execute the invoice summary mapping data flow",
+									"type": "ExecuteDataFlow",
+									"dependsOn": [],
+									"policy": {
+										"timeout": "1.00:00:00",
+										"retry": 1,
+										"retryIntervalInSeconds": 60
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"dataflow": {
+											"referenceName": "DF_InvoiceSummary_Transform",
+											"type": "DataFlowReference",
+											"parameters": {},
+											"datasetParameters": {
+												"SourceInvoiceSummary": {},
+												"SourceCustomerAccounts": {},
+												"SinkCustomerBillingSummary": {}
+											}
+										},
+										"staging": {},
+										"compute": {
+											"coreCount": 8,
+											"computeType": "General"
+										},
+										"traceLevel": "Fine"
+									}
+								}
+							]
+						}
+					},
+					{
+						"name": "SetSuccessStatus",
+						"description": "Record pipeline completion status",
+						"type": "SetVariable",
+						"dependsOn": [
+							{
+								"activity": "CheckInvoiceFileExists",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"variableName": "PipelineStatus",
+							"value": {
+								"value": "@concat('SUCCESS | RunId: ', pipeline().RunId, ' | Completed: ', utcNow())",
+								"type": "Expression"
+							}
+						}
+					}
+				],
+				"concurrency": 1,
+				"policy": {
+					"elapsedTimeMetric": {}
+				},
+				"parameters": {
+					"ProcessingDate": {
+						"type": "String"
+					}
+				},
+				"variables": {
+					"PipelineStatus": {
+						"type": "String",
+						"defaultValue": "RUNNING"
+					}
+				},
+				"annotations": [
+					"UPS",
+					"Finance",
+					"Invoice",
+					"ETL",
+					"CSV"
+				]
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/datasets/DS_CSV_InvoiceSummary_Source')]",
+				"[concat(variables('factoryId'), '/dataflows/DF_InvoiceSummary_Transform')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/PL_UPS_Finance_Master')]",
+			"type": "Microsoft.DataFactory/factories/pipelines",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"description": "Master orchestration pipeline for UPS Finance & Billing. Executes both the Billing Transactions ETL and Invoice Summary ETL pipelines in parallel, then logs overall completion status.",
+				"activities": [
+					{
+						"name": "RunBillingETL",
+						"description": "Invoke the Billing Transactions ETL child pipeline",
+						"type": "ExecutePipeline",
+						"dependsOn": [],
+						"policy": {
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"pipeline": {
+								"referenceName": "PL_UPS_BillingTransactions_ETL",
+								"type": "PipelineReference"
+							},
+							"waitOnCompletion": true,
+							"parameters": {
+								"BillingMonth": {
+									"value": "@pipeline().parameters.BillingMonth",
+									"type": "Expression"
+								},
+								"BillingYear": {
+									"value": "@pipeline().parameters.BillingYear",
+									"type": "Expression"
+								}
+							}
+						}
+					},
+					{
+						"name": "RunInvoiceETL",
+						"description": "Invoke the Invoice Summary ETL child pipeline (runs in parallel with Billing ETL)",
+						"type": "ExecutePipeline",
+						"dependsOn": [],
+						"policy": {
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"pipeline": {
+								"referenceName": "PL_UPS_InvoiceSummary_ETL",
+								"type": "PipelineReference"
+							},
+							"waitOnCompletion": true,
+							"parameters": {
+								"ProcessingDate": {
+									"value": "@pipeline().parameters.ProcessingDate",
+									"type": "Expression"
+								}
+							}
+						}
+					},
+					{
+						"name": "CheckBothPipelinesSucceeded",
+						"description": "Evaluate success of both child pipelines",
+						"type": "IfCondition",
+						"dependsOn": [
+							{
+								"activity": "RunBillingETL",
+								"dependencyConditions": [
+									"Completed"
+								]
+							},
+							{
+								"activity": "RunInvoiceETL",
+								"dependencyConditions": [
+									"Completed"
+								]
+							}
+						],
+						"userProperties": [],
+						"typeProperties": {
+							"expression": {
+								"value": "@and(equals(activity('RunBillingETL').Status, 'Succeeded'), equals(activity('RunInvoiceETL').Status, 'Succeeded'))",
+								"type": "Expression"
+							},
+							"ifFalseActivities": [
+								{
+									"name": "SetMasterPartialFailure",
+									"type": "SetVariable",
+									"dependsOn": [],
+									"policy": {
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"variableName": "MasterStatus",
+										"value": {
+											"value": "@concat('PARTIAL_FAILURE | BillingETL: ', activity('RunBillingETL').Status, ' | InvoiceETL: ', activity('RunInvoiceETL').Status, ' | RunId: ', pipeline().RunId)",
+											"type": "Expression"
+										}
+									}
+								}
+							],
+							"ifTrueActivities": [
+								{
+									"name": "SetMasterSuccess",
+									"type": "SetVariable",
+									"dependsOn": [],
+									"policy": {
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"variableName": "MasterStatus",
+										"value": {
+											"value": "@concat('ALL_SUCCESS | Master RunId: ', pipeline().RunId, ' | Completed: ', utcNow())",
+											"type": "Expression"
+										}
+									}
+								}
+							]
+						}
+					}
+				],
+				"concurrency": 1,
+				"policy": {
+					"elapsedTimeMetric": {}
+				},
+				"parameters": {
+					"BillingMonth": {
+						"type": "String"
+					},
+					"BillingYear": {
+						"type": "String"
+					},
+					"ProcessingDate": {
+						"type": "String"
+					}
+				},
+				"variables": {
+					"MasterStatus": {
+						"type": "String",
+						"defaultValue": "RUNNING"
+					}
+				},
+				"annotations": [
+					"UPS",
+					"Finance",
+					"Master",
+					"Orchestration"
+				]
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/pipelines/PL_UPS_BillingTransactions_ETL')]",
+				"[concat(variables('factoryId'), '/pipelines/PL_UPS_InvoiceSummary_ETL')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/TR_UPS_Finance_Daily_Schedule')]",
+			"type": "Microsoft.DataFactory/factories/triggers",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"description": "Daily scheduled trigger for UPS Finance Master Pipeline. Runs every day at 2:00 AM UTC to process the previous day's billing and invoice data.",
+				"annotations": [
+					"UPS",
+					"Finance",
+					"Daily",
+					"Scheduled"
+				],
+				"runtimeState": "Stopped",
+				"pipelines": [
+					{
+						"pipelineReference": {
+							"referenceName": "PL_UPS_Finance_Master",
+							"type": "PipelineReference"
+						},
+						"parameters": {
+							"BillingMonth": {
+								"value": "[parameters('TR_UPS_Finance_Daily_Schedule_properties_PL_UPS_Finance_Master_parameters_BillingMonth')]",
+								"type": "Expression"
+							},
+							"BillingYear": {
+								"value": "[parameters('TR_UPS_Finance_Daily_Schedule_properties_PL_UPS_Finance_Master_parameters_BillingYear')]",
+								"type": "Expression"
+							},
+							"ProcessingDate": {
+								"value": "[parameters('TR_UPS_Finance_Daily_Schedule_properties_PL_UPS_Finance_Master_parameters_ProcessingDate')]",
+								"type": "Expression"
+							}
+						}
+					}
+				],
+				"type": "ScheduleTrigger",
+				"typeProperties": {
+					"recurrence": {
+						"frequency": "Day",
+						"interval": 1,
+						"startTime": "2024-01-01T02:00:00Z",
+						"timeZone": "UTC",
+						"schedule": {
+							"minutes": [
+								0
+							],
+							"hours": [
+								2
+							]
+						}
+					}
+				}
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/pipelines/PL_UPS_Finance_Master')]"
+			]
+		}
+	]
+}
