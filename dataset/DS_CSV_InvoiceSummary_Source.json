@@ -1,48 +1,89 @@
 {
-    "name": "DS_CSV_InvoiceSummary_Source",
-    "type": "Microsoft.DataFactory/factories/datasets",
-    "properties": {
-        "description": "Source dataset for UPS Invoice Summary CSV file",
-        "linkedServiceName": {
-            "referenceName": "LS_AzureBlobStorage_Source",
-            "type": "LinkedServiceReference"
-        },
-        "type": "DelimitedText",
-        "typeProperties": {
-            "location": {
-                "type": "AzureBlobStorageLocation",
-                "fileName": "invoice_summary.csv",
-                "container": "ups-finance-source",
-                "folderPath": "invoices/raw"
-            },
-            "columnDelimiter": ",",
-            "rowDelimiter": "\n",
-            "encodingName": "UTF-8",
-            "firstRowAsHeader": true,
-            "quoteChar": "\"",
-            "escapeChar": "\\"
-        },
-        "schema": [
-            { "name": "InvoiceID",         "type": "String" },
-            { "name": "CustomerID",        "type": "String" },
-            { "name": "InvoiceDate",       "type": "String" },
-            { "name": "DueDate",           "type": "String" },
-            { "name": "BillingPeriodStart","type": "String" },
-            { "name": "BillingPeriodEnd",  "type": "String" },
-            { "name": "TotalShipments",    "type": "String" },
-            { "name": "TotalWeight",       "type": "String" },
-            { "name": "SubTotal",          "type": "String" },
-            { "name": "TaxAmount",         "type": "String" },
-            { "name": "DiscountAmount",    "type": "String" },
-            { "name": "InvoiceTotal",      "type": "String" },
-            { "name": "Currency",          "type": "String" },
-            { "name": "InvoiceStatus",     "type": "String" }
-        ],
-        "annotations": [
-            "UPS",
-            "Invoice",
-            "Source",
-            "CSV"
-        ]
-    }
+	"name": "DS_CSV_InvoiceSummary_Source",
+	"properties": {
+		"description": "Source dataset for UPS Invoice Summary CSV file",
+		"linkedServiceName": {
+			"referenceName": "LS_AzureBlobStorage_Source",
+			"type": "LinkedServiceReference"
+		},
+		"annotations": [
+			"UPS",
+			"Invoice",
+			"Source",
+			"CSV"
+		],
+		"type": "DelimitedText",
+		"typeProperties": {
+			"location": {
+				"type": "AzureBlobStorageLocation",
+				"fileName": "invoice_summary.csv",
+				"folderPath": "invoices/raw",
+				"container": "ups-finance-source"
+			},
+			"columnDelimiter": ",",
+			"encodingName": "UTF-8",
+			"escapeChar": "\\",
+			"firstRowAsHeader": true,
+			"quoteChar": "\""
+		},
+		"schema": [
+			{
+				"name": "InvoiceID",
+				"type": "String"
+			},
+			{
+				"name": "CustomerID",
+				"type": "String"
+			},
+			{
+				"name": "InvoiceDate",
+				"type": "String"
+			},
+			{
+				"name": "DueDate",
+				"type": "String"
+			},
+			{
+				"name": "BillingPeriodStart",
+				"type": "String"
+			},
+			{
+				"name": "BillingPeriodEnd",
+				"type": "String"
+			},
+			{
+				"name": "TotalShipments",
+				"type": "String"
+			},
+			{
+				"name": "TotalWeight",
+				"type": "String"
+			},
+			{
+				"name": "SubTotal",
+				"type": "String"
+			},
+			{
+				"name": "TaxAmount",
+				"type": "String"
+			},
+			{
+				"name": "DiscountAmount",
+				"type": "String"
+			},
+			{
+				"name": "InvoiceTotal",
+				"type": "String"
+			},
+			{
+				"name": "Currency",
+				"type": "String"
+			},
+			{
+				"name": "InvoiceStatus",
+				"type": "String"
+			}
+		]
+	},
+	"type": "Microsoft.DataFactory/factories/datasets"
 }
