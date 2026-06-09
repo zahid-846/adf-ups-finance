@@ -5,11 +5,11 @@
 		"factoryName": {
 			"value": "adf-ups-finance"
 		},
-		"LS_AzureBlobStorage_Sink_connectionString": {
-			"value": ""
+		"LS_AzureBlobStorage_Sink_properties_typeProperties_serviceEndpoint": {
+			"value": "https://upsfinancesnkdev.blob.core.windows.net/"
 		},
-		"LS_AzureBlobStorage_Source_connectionString": {
-			"value": ""
+		"LS_AzureBlobStorage_Source_properties_typeProperties_serviceEndpoint": {
+			"value": "https://upsfinancesrcdev.blob.core.windows.net/"
 		},
 		"TR_UPS_Finance_Daily_Schedule_properties_PL_UPS_Finance_Master_parameters_BillingMonth": {
 			"value": "@formatDateTime(addDays(trigger().scheduledTime, -1), 'MM')"

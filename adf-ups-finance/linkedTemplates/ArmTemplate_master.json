@@ -7,13 +7,13 @@
 			"metadata": "Data Factory name",
 			"defaultValue": "adf-ups-finance"
 		},
-		"LS_AzureBlobStorage_Sink_connectionString": {
-			"type": "secureString",
-			"metadata": "Secure string for 'connectionString' of 'LS_AzureBlobStorage_Sink'"
+		"LS_AzureBlobStorage_Sink_properties_typeProperties_serviceEndpoint": {
+			"type": "string",
+			"defaultValue": "https://upsfinancesnkdev.blob.core.windows.net/"
 		},
-		"LS_AzureBlobStorage_Source_connectionString": {
-			"type": "secureString",
-			"metadata": "Secure string for 'connectionString' of 'LS_AzureBlobStorage_Source'"
+		"LS_AzureBlobStorage_Source_properties_typeProperties_serviceEndpoint": {
+			"type": "string",
+			"defaultValue": "https://upsfinancesrcdev.blob.core.windows.net/"
 		},
 		"TR_UPS_Finance_Daily_Schedule_properties_PL_UPS_Finance_Master_parameters_BillingMonth": {
 			"type": "string",
@@ -54,11 +54,11 @@
 					"factoryName": {
 						"value": "[parameters('factoryName')]"
 					},
-					"LS_AzureBlobStorage_Sink_connectionString": {
-						"value": "[parameters('LS_AzureBlobStorage_Sink_connectionString')]"
+					"LS_AzureBlobStorage_Sink_properties_typeProperties_serviceEndpoint": {
+						"value": "[parameters('LS_AzureBlobStorage_Sink_properties_typeProperties_serviceEndpoint')]"
 					},
-					"LS_AzureBlobStorage_Source_connectionString": {
-						"value": "[parameters('LS_AzureBlobStorage_Source_connectionString')]"
+					"LS_AzureBlobStorage_Source_properties_typeProperties_serviceEndpoint": {
+						"value": "[parameters('LS_AzureBlobStorage_Source_properties_typeProperties_serviceEndpoint')]"
 					},
 					"TR_UPS_Finance_Daily_Schedule_properties_PL_UPS_Finance_Master_parameters_BillingMonth": {
 						"value": "[parameters('TR_UPS_Finance_Daily_Schedule_properties_PL_UPS_Finance_Master_parameters_BillingMonth')]"
