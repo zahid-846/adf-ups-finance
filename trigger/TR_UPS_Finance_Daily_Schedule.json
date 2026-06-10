@@ -1,48 +1,52 @@
 {
-    "name": "TR_UPS_Finance_Daily_Schedule",
-    "type": "Microsoft.DataFactory/factories/triggers",
-    "properties": {
-        "description": "Daily scheduled trigger for UPS Finance Master Pipeline. Runs every day at 2:00 AM UTC to process the previous day's billing and invoice data.",
-        "type": "ScheduleTrigger",
-        "typeProperties": {
-            "recurrence": {
-                "frequency": "Day",
-                "interval": 1,
-                "startTime": "2024-01-01T02:00:00Z",
-                "timeZone": "UTC",
-                "schedule": {
-                    "hours": [ 2 ],
-                    "minutes": [ 0 ]
-                }
-            }
-        },
-        "pipelines": [
-            {
-                "pipelineReference": {
-                    "referenceName": "PL_UPS_Finance_Master",
-                    "type": "PipelineReference"
-                },
-                "parameters": {
-                    "BillingMonth": {
-                        "value": "@formatDateTime(addDays(trigger().scheduledTime, -1), 'MM')",
-                        "type": "Expression"
-                    },
-                    "BillingYear": {
-                        "value": "@formatDateTime(addDays(trigger().scheduledTime, -1), 'yyyy')",
-                        "type": "Expression"
-                    },
-                    "ProcessingDate": {
-                        "value": "@formatDateTime(addDays(trigger().scheduledTime, -1), 'yyyy-MM-dd')",
-                        "type": "Expression"
-                    }
-                }
-            }
-        ],
-        "annotations": [
-            "UPS",
-            "Finance",
-            "Daily",
-            "Scheduled"
-        ]
-    }
+	"name": "TR_UPS_Finance_Daily_Schedule",
+	"properties": {
+		"description": "Daily scheduled trigger for UPS Finance Master Pipeline. Runs every day at 2:00 AM UTC to process the previous day's billing and invoice data.",
+		"annotations": [
+			"UPS",
+			"Finance",
+			"Daily",
+			"Scheduled"
+		],
+		"runtimeState": "Stopped",
+		"pipelines": [
+			{
+				"pipelineReference": {
+					"referenceName": "PL_UPS_Finance_Master",
+					"type": "PipelineReference"
+				},
+				"parameters": {
+					"BillingMonth": {
+						"value": "@formatDateTime(addDays(trigger().scheduledTime, -1), 'MM')",
+						"type": "Expression"
+					},
+					"BillingYear": {
+						"value": "@formatDateTime(addDays(trigger().scheduledTime, -1), 'yyyy')",
+						"type": "Expression"
+					},
+					"ProcessingDate": {
+						"value": "@formatDateTime(addDays(trigger().scheduledTime, -1), 'yyyy-MM-dd')",
+						"type": "Expression"
+					}
+				}
+			}
+		],
+		"type": "ScheduleTrigger",
+		"typeProperties": {
+			"recurrence": {
+				"frequency": "Day",
+				"interval": 1,
+				"startTime": "2024-01-01T02:00:00Z",
+				"timeZone": "UTC",
+				"schedule": {
+					"minutes": [
+						0
+					],
+					"hours": [
+						2
+					]
+				}
+			}
+		}
+	}
 }

@@ -1,0 +1,15 @@
+{
+	"name": "adf-ups-finance",
+	"properties": {
+		"trustModeClaimForMi": {
+			"value": "Disabled",
+			"editable": true
+		}
+	},
+	"location": "eastus",
+	"identity": {
+		"type": "SystemAssigned",
+		"principalId": "f5050b3f-e4bd-44dc-8d35-37d6b420e7c5",
+		"tenantId": "2344a856-1143-4ee4-866f-c118a1e41264"
+	}
+}

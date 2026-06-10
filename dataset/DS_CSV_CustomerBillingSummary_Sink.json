@@ -1,37 +1,37 @@
 {
-    "name": "DS_CSV_CustomerBillingSummary_Sink",
-    "type": "Microsoft.DataFactory/factories/datasets",
-    "properties": {
-        "description": "Sink dataset for per-customer aggregated billing summary output CSV",
-        "linkedServiceName": {
-            "referenceName": "LS_AzureBlobStorage_Sink",
-            "type": "LinkedServiceReference"
-        },
-        "type": "DelimitedText",
-        "typeProperties": {
-            "location": {
-                "type": "AzureBlobStorageLocation",
-                "fileName": {
-                    "value": "@concat('customer_billing_summary_', formatDateTime(utcNow(), 'yyyyMMdd'), '.csv')",
-                    "type": "Expression"
-                },
-                "container": "ups-finance-output",
-                "folderPath": "customers/summary"
-            },
-            "columnDelimiter": ",",
-            "rowDelimiter": "\n",
-            "encodingName": "UTF-8",
-            "firstRowAsHeader": true,
-            "quoteChar": "\"",
-            "escapeChar": "\\"
-        },
-        "schema": [],
-        "annotations": [
-            "UPS",
-            "Customer",
-            "Sink",
-            "CSV",
-            "Summary"
-        ]
-    }
+	"name": "DS_CSV_CustomerBillingSummary_Sink",
+	"properties": {
+		"description": "Sink dataset for per-customer aggregated billing summary output CSV",
+		"linkedServiceName": {
+			"referenceName": "LS_AzureBlobStorage_Sink",
+			"type": "LinkedServiceReference"
+		},
+		"annotations": [
+			"UPS",
+			"Customer",
+			"Sink",
+			"CSV",
+			"Summary"
+		],
+		"type": "DelimitedText",
+		"typeProperties": {
+			"location": {
+				"type": "AzureBlobStorageLocation",
+				"fileName": {
+					"value": "@concat('customer_billing_summary_', formatDateTime(utcNow(), 'yyyyMMdd'), '.csv')",
+					"type": "Expression"
+				},
+				"folderPath": "customers/summary",
+				"container": "ups-finance-output"
+			},
+			"columnDelimiter": ",",
+			"rowDelimiter": "\n",
+			"encodingName": "UTF-8",
+			"escapeChar": "\\",
+			"firstRowAsHeader": true,
+			"quoteChar": "\""
+		},
+		"schema": []
+	},
+	"type": "Microsoft.DataFactory/factories/datasets"
 }
