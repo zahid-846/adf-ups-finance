@@ -1,0 +1,37 @@
+{
+    "name": "DS_CSV_BillingReport_Sink",
+    "type": "Microsoft.DataFactory/factories/datasets",
+    "properties": {
+        "description": "Sink dataset for transformed and aggregated UPS Billing Report output CSV",
+        "linkedServiceName": {
+            "referenceName": "LS_AzureBlobStorage_Sink",
+            "type": "LinkedServiceReference"
+        },
+        "type": "DelimitedText",
+        "typeProperties": {
+            "location": {
+                "type": "AzureBlobStorageLocation",
+                "fileName": {
+                    "value": "@concat('billing_report_', formatDateTime(utcNow(), 'yyyyMMdd'), '.csv')",
+                    "type": "Expression"
+                },
+                "container": "ups-finance-output",
+                "folderPath": "billing/aggregated"
+            },
+            "columnDelimiter": ",",
+            "rowDelimiter": "\n",
+            "encodingName": "UTF-8",
+            "firstRowAsHeader": true,
+            "quoteChar": "\"",
+            "escapeChar": "\\"
+        },
+        "schema": [],
+        "annotations": [
+            "UPS",
+            "Billing",
+            "Sink",
+            "CSV",
+            "Aggregated"
+        ]
+    }
+}
